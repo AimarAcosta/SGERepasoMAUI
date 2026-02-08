@@ -1,0 +1,354 @@
+﻿@page "/"
+@using SGERepasoMAUI.Models
+@using SGERepasoMAUI.Services
+@inject CentrosService MiServicio
+
+<style>
+    .login-card {
+        max-width: 420px;
+        margin: 60px auto;
+        padding: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        color: white;
+    }
+    .login-card h2 { text-align: center; margin-bottom: 30px; }
+    .login-card input {
+        width: 100%;
+        padding: 12px 15px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+    .login-card .btn-login {
+        width: 100%;
+        padding: 14px;
+        background: white;
+        color: #764ba2;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 20px;
+        transition: transform 0.2s;
+    }
+    .login-card .btn-login:hover { transform: scale(1.02); }
+    
+    .filtros-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .filtros-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+    .filtro-item label {
+        display: block;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    .filtro-item select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 10px;
+        font-size: 15px;
+        background: white;
+        transition: border-color 0.3s;
+    }
+    .filtro-item select:focus { border-color: #667eea; outline: none; }
+    .filtro-item select:disabled { background: #f0f0f0; cursor: not-allowed; }
+    
+    .resultado-badge {
+        display: inline-block;
+        background: #667eea;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+    
+    .tabla-centros {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .tabla-centros thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .tabla-centros th { padding: 15px; text-align: left; }
+    .tabla-centros td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+    .tabla-centros tbody tr:hover { background: #f8f9ff; }
+    .tabla-centros tbody tr:last-child td { border-bottom: none; }
+    
+    .btn-mapa {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-mapa:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+    }
+    
+    .header-app {
+        text-align: center;
+        padding: 20px 0;
+        margin-bottom: 20px;
+    }
+    .header-app h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2.2em;
+        margin: 0;
+    }
+    .header-app p { color: #666; margin-top: 5px; }
+    
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        background: #fff3cd;
+        border-radius: 12px;
+        color: #856404;
+    }
+</style>
+
+@if (!estaLogueado)
+{
+    <div class="login-card">
+        <h2>ElorMAUI</h2>
+        <p style="text-align: center; opacity: 0.8; margin-bottom: 25px;">Buscador de Centros Educativos</p>
+        
+        <input @bind="usuario" placeholder="Usuario" />
+        <input @bind="pass" type="password" placeholder="Contrasena" />
+        
+        <button class="btn-login" @onclick="HacerLogin">Sartu / Entrar</button>
+        
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <p style="background: #ff6b6b; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center;">
+                @mensajeError
+            </p>
+        }
+        
+        <p style="text-align: center; margin-top: 20px; font-size: 12px; opacity: 0.7;">
+            Demo: admin / 1234
+        </p>
+    </div>
+}
+else
+{
+    <div class="header-app">
+        <h1>ElorMAUI</h1>
+        <p>Ikastetxeen Bilatzailea / Buscador de Centros Educativos</p>
+    </div>
+    
+    <div class="filtros-container">
+        <div class="filtros-grid">
+            <div class="filtro-item">
+                <label>Zentro-mota / Tipo (DTITUC)</label>
+                <select @onchange="OnTipoChange">
+                    <option value="">-- Aukeratu / Selecciona --</option>
+                    @foreach (var t in listaTipos)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="filtro-item">
+                <label>Lurraldea / Territorio (DTERRE)</label>
+                <select @onchange="OnTerritorioChange" disabled="@(string.IsNullOrEmpty(tipoSeleccionado))">
+                    <option value="">-- Aukeratu / Selecciona --</option>
+                    @foreach (var t in listaTerritorios)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="filtro-item">
+                <label>Udalerria / Municipio (DMUNIC)</label>
+                <select @onchange="OnMunicipioChange" disabled="@(string.IsNullOrEmpty(territorioSeleccionado))">
+                    <option value="">-- Aukeratu / Selecciona --</option>
+                    @foreach (var m in listaMunicipios)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (listaResultados.Any())
+    {
+        <div class="resultado-badge">
+            Guztira / Total: @listaResultados.Count ikastetxe
+        </div>
+        
+        <table class="tabla-centros">
+            <thead>
+                <tr>
+                    <th>Izena / Nombre</th>
+                    <th>Udalerria / Municipio</th>
+                    <th>Ekintza / Accion</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var centro in listaResultados)
+                {
+                    <tr>
+                        <td><strong>@centro.Nombre</strong></td>
+                        <td>@centro.Municipio</td>
+                        <td>
+                            <button class="btn-mapa" @onclick="() => IrAlMapa(centro)">
+                                Mapa Ikusi
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (!string.IsNullOrEmpty(municipioSeleccionado))
+    {
+        <div class="no-results">
+            Ez da zentrorik aurkitu filtro hauekin / No se encontraron centros con estos filtros
+        </div>
+    }
+    else if (string.IsNullOrEmpty(tipoSeleccionado))
+    {
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <p style="font-size: 48px; margin-bottom: 10px;">👆</p>
+            <p>Hautatu iragazkiak zentroak ikusteko / Selecciona los filtros para ver centros</p>
+        </div>
+    }
+}
+
+@code {
+    // Variables de Estado
+    private bool estaLogueado = false;
+    private string usuario = string.Empty;
+    private string pass = string.Empty;
+    private string mensajeError = string.Empty;
+
+    // Datos
+    private List<CentroEducativo> todosLosDatos = new();
+    private List<CentroEducativo> listaResultados = new();
+
+    // Listas para los Selects
+    private List<string> listaTipos = new();
+    private List<string> listaTerritorios = new();
+    private List<string> listaMunicipios = new();
+
+    // Selecciones
+    private string tipoSeleccionado = string.Empty;
+    private string territorioSeleccionado = string.Empty;
+    private string municipioSeleccionado = string.Empty;
+
+    // LOGIN
+    private async Task HacerLogin()
+    {
+        if (usuario == "admin" && pass == "1234")
+        {
+            estaLogueado = true;
+            mensajeError = string.Empty;
+            await CargarDatos();
+        }
+        else
+        {
+            mensajeError = "❌ Credenciales incorrectas";
+        }
+    }
+
+    // CARGA DE DATOS
+    private async Task CargarDatos()
+    {
+        todosLosDatos = await MiServicio.ObtenerCentrosAsync();
+        
+        // Llenar primer combo con LINQ - valores únicos ordenados
+        listaTipos = todosLosDatos
+            .Select(x => x.Tipo)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+    }
+
+    // LÓGICA ENCADENADA
+    private void OnTipoChange(ChangeEventArgs e)
+    {
+        tipoSeleccionado = e.Value?.ToString() ?? string.Empty;
+
+        // LINQ: Filtrar Territorios basados en el Tipo seleccionado
+        listaTerritorios = todosLosDatos
+            .Where(x => x.Tipo == tipoSeleccionado)
+            .Select(x => x.Territorio)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        // Resetear siguientes niveles
+        listaMunicipios.Clear();
+        listaResultados.Clear();
+        territorioSeleccionado = string.Empty;
+        municipioSeleccionado = string.Empty;
+    }
+
+    private void OnTerritorioChange(ChangeEventArgs e)
+    {
+        territorioSeleccionado = e.Value?.ToString() ?? string.Empty;
+
+        // LINQ: Filtrar Municipios basados en Tipo Y Territorio
+        listaMunicipios = todosLosDatos
+            .Where(x => x.Tipo == tipoSeleccionado && x.Territorio == territorioSeleccionado)
+            .Select(x => x.Municipio)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        // Resetear resultados
+        listaResultados.Clear();
+        municipioSeleccionado = string.Empty;
+    }
+
+    private void OnMunicipioChange(ChangeEventArgs e)
+    {
+        municipioSeleccionado = e.Value?.ToString() ?? string.Empty;
+
+        // LINQ: Resultado Final con todos los filtros
+        listaResultados = todosLosDatos
+            .Where(x => x.Tipo == tipoSeleccionado &&
+                        x.Territorio == territorioSeleccionado &&
+                        x.Municipio == municipioSeleccionado)
+            .ToList();
+    }
+
+    // NAVEGACIÓN HÍBRIDA - Desde Blazor a página XAML nativa
+    private async void IrAlMapa(CentroEducativo centro)
+    {
+        // Navegar a la página nativa XAML con el mapa
+        if (Application.Current?.MainPage != null)
+        {
+            await Application.Current.MainPage.Navigation.PushAsync(new SGERepasoMAUI.Views.MapaNativoPage(centro));
+        }
+    }
+}
